@@ -506,6 +506,31 @@ export function landingPage(host: string): string {
     </div>
   </section>
 
+  <!-- How It Works -->
+  <section class="section" style="padding-top:0;">
+    <div class="container">
+      <p class="section-title">How It Works</p>
+      <h2 class="section-h2">OG images in 3 steps</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px;">
+        <div class="card" style="text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:40px;font-weight:700;color:var(--accent);margin-bottom:12px;">1</div>
+          <h3 style="font-size:17px;font-weight:600;margin-bottom:8px;">Get an API key</h3>
+          <p style="font-size:14px;color:var(--text-2);line-height:1.6;">Register with your email in 5 seconds. Free tier gets 100 images/month — no credit card required.</p>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:40px;font-weight:700;color:var(--accent);margin-bottom:12px;">2</div>
+          <h3 style="font-size:17px;font-weight:600;margin-bottom:8px;">Add meta tags</h3>
+          <p style="font-size:14px;color:var(--text-2);line-height:1.6;">Copy 3 lines of HTML into your <head>. Works with any static site, CMS, or framework.</p>
+        </div>
+        <div class="card" style="text-align:center;">
+          <div style="font-family:var(--font-mono);font-size:40px;font-weight:700;color:var(--accent);margin-bottom:12px;">3</div>
+          <h3 style="font-size:17px;font-weight:600;margin-bottom:8px;">Share anywhere</h3>
+          <p style="font-size:14px;color:var(--text-2);line-height:1.6;">Twitter, Slack, LinkedIn, Discord — your OG images render perfectly on every platform.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Pricing -->
   <section class="section" id="pricing">
     <div class="container">
