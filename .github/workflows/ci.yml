@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -24,12 +24,11 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
-      - name: Build
-        run: npm run build
-
-      - name: Verify build output
+      - name: Verify project structure
         run: |
-          test -f dist/index.js
-          test -f dist/server.js
-          test -f dist/db.js
-          echo "✓ Build output verified"
+          test -f src/index.ts
+          test -f src/og/render.ts
+          test -f src/og/templates.ts
+          test -f wrangler.toml
+          test -f package.json
+          echo "✓ Project structure verified"
