@@ -42,10 +42,9 @@ export interface Subscription {
   created_at: string;
 }
 
+/** Environment variables (no longer Cloudflare bindings — plain strings) */
 export interface Env {
-  DB: D1Database;
-  OG_CACHE: R2Bucket;
-  ENVIRONMENT: string;
+  ENVIRONMENT?: string;
   AUTH_SECRET?: string;
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
