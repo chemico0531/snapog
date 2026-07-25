@@ -19,25 +19,25 @@ const OG_HEIGHT = 630;
 const fonts = [
   {
     name: 'Noto Sans',
-    data: notoSansRegular as ArrayBuffer,
+    data: notoSansRegular,
     weight: 400 as const,
     style: 'normal' as const,
   },
   {
     name: 'Noto Sans',
-    data: notoSansBold as ArrayBuffer,
+    data: notoSansBold,
     weight: 700 as const,
     style: 'normal' as const,
   },
   {
     name: 'Noto Serif',
-    data: notoSerifRegular as ArrayBuffer,
+    data: notoSerifRegular,
     weight: 400 as const,
     style: 'normal' as const,
   },
   {
     name: 'Noto Serif',
-    data: notoSerifBold as ArrayBuffer,
+    data: notoSerifBold,
     weight: 700 as const,
     style: 'normal' as const,
   },
