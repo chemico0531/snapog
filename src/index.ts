@@ -287,6 +287,9 @@ app.get('/dashboard', async c => {
 // ── Health / ops ──────────────────────────────────────────────────────────────
 app.get('/health', c => c.json({ ok: true, ts: new Date().toISOString() }));
 
+// ── Billing (Stripe) ──────────────────────────────────────────────────────────
+app.route('/', billing);
+
 // 404 fallback
 app.notFound(_c => htmlResponse(errorPage(404, 'Page not found'), 404));
 app.onError((err, _c) => {
