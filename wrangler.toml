@@ -14,7 +14,12 @@ bucket_name = "snapog-og-cache"
 
 [vars]
 ENVIRONMENT = "development"
-# Set AUTH_SECRET via `wrangler secret put AUTH_SECRET` for dashboard cookie signing
+# Stripe — set via `wrangler secret put` in production:
+#   wrangler secret put STRIPE_SECRET_KEY
+#   wrangler secret put STRIPE_WEBHOOK_SECRET
+#   wrangler secret put STRIPE_PRO_PRICE_ID
+#   wrangler secret put STRIPE_BUSINESS_PRICE_ID
+# AUTH_SECRET — set via `wrangler secret put AUTH_SECRET` for dashboard cookie signing
 
 [env.staging]
 name = "snapog-staging"
