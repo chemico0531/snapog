@@ -120,7 +120,7 @@ export async function verifyWebhookSignature(params: {
   return crypto.subtle.verify(
     'HMAC',
     key,
-    sigBytes,
+    sigBytes as BufferSource,
     encoder.encode(signedPayload)
   );
 }
