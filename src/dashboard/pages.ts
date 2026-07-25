@@ -484,8 +484,8 @@ export function landingPage(host: string): string {
       <div class="features-grid">
         <div class="feature-card">
           <span class="feature-icon">⚡</span>
-          <h3>Edge-cached globally</h3>
-          <p>Images are generated once and stored on Cloudflare R2. Subsequent requests hit the cache in under 50ms worldwide.</p>
+          <h3>Fast & reliable</h3>
+          <p>Images are rendered on the fly with satori and served instantly. Built on Node.js, deployed globally.</p>
         </div>
         <div class="feature-card">
           <span class="feature-icon">🎨</span>
