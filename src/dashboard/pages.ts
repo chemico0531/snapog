@@ -387,7 +387,7 @@ export function landingPage(host: string): string {
       <div class="hero-eyebrow">Open Graph Images API</div>
       <h1>OG images for every URL,<br/><em>delivered at the edge</em></h1>
       <p class="hero-sub">
-        One API call. Instant PNG. Cached globally on Cloudflare CDN.
+        One API call. Instant PNG. Simple & fast.
         Stop hand-coding OG templates — let SnapOG generate them dynamically.
       </p>
       <div class="hero-cta">
