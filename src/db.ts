@@ -1,71 +1,96 @@
-// SnapOG — SQLite database layer (better-sqlite3)
-// Replaces Cloudflare D1 with local SQLite for Node.js deployment
+// SnapOG — D1 database layer (Cloudflare Workers)
+// Replaces better-sqlite3 with D1 — same SQLite semantics, async API
 
-import Database from 'better-sqlite3';
-import { mkdirSync, readFileSync, readdirSync } from 'fs';
-import { join, dirname } from 'path';
+import type { D1Database } from './types';
 
-const DB_PATH = process.env.DB_PATH || join(__dirname, '..', 'data', 'snapog.db');
+// ── Table creation (idempotent) ──────────────────────────────────────────────
 
-// Ensure the data directory exists
-mkdirSync(dirname(DB_PATH), { recursive: true });
+const SCHEMA_SQL = [
+  `CREATE TABLE IF NOT EXISTS users (
+    id          TEXT PRIMARY KEY,
+    email       TEXT UNIQUE NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE TABLE IF NOT EXISTS api_keys (
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    name            TEXT NOT NULL DEFAULT 'default',
+    key_prefix      TEXT NOT NULL,
+    key_hash        TEXT UNIQUE NOT NULL,
+    tier            TEXT NOT NULL DEFAULT 'free',
+    monthly_limit   INTEGER NOT NULL DEFAULT 100,
+    usage_count     INTEGER NOT NULL DEFAULT 0,
+    usage_reset_at  TEXT NOT NULL,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)`,
+  `CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id)`,
+  `CREATE TABLE IF NOT EXISTS usage_events (
+    id           TEXT PRIMARY KEY,
+    api_key_id   TEXT NOT NULL,
+    template     TEXT NOT NULL DEFAULT 'default',
+    cache_hit    INTEGER NOT NULL DEFAULT 0,
+    generated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (api_key_id) REFERENCES api_keys(id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_usage_key ON usage_events(api_key_id)`,
+  `CREATE TABLE IF NOT EXISTS subscriptions (
+    id                       TEXT PRIMARY KEY,
+    user_id                  TEXT NOT NULL,
+    stripe_subscription_id   TEXT UNIQUE NOT NULL,
+    stripe_customer_email    TEXT NOT NULL,
+    tier                     TEXT NOT NULL DEFAULT 'pro',
+    status                   TEXT NOT NULL DEFAULT 'active',
+    current_period_end       TEXT NOT NULL,
+    created_at               TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe ON subscriptions(stripe_subscription_id)`,
+];
 
-const sqlite = new Database(DB_PATH);
-sqlite.pragma('journal_mode = WAL');
-sqlite.pragma('foreign_keys = ON');
+// ── DB wrapper factory ───────────────────────────────────────────────────────
 
-// ── Migration runner ──────────────────────────────────────────────────────────
-
-sqlite.exec(`
-  CREATE TABLE IF NOT EXISTS _migrations (
-    name TEXT PRIMARY KEY,
-    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
-`);
-
-const migrationsDir = join(__dirname, '..', 'migrations');
-try {
-  const files = readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort();
-
-  for (const file of files) {
-    const applied = sqlite.prepare(
-      'SELECT name FROM _migrations WHERE name = ?'
-    ).get(file) as { name: string } | undefined;
-
-    if (!applied) {
-      const sql = readFileSync(join(migrationsDir, file), 'utf-8');
-      sqlite.exec(sql);
-      sqlite.prepare('INSERT INTO _migrations (name) VALUES (?)').run(file);
-      console.log(`  ✓ Migration applied: ${file}`);
-    }
-  }
-} catch {
-  // migrations directory not found — skip (production Dockerfile copies it separately)
-  console.log('  (no migrations directory, skipping)');
+export interface DBApi {
+  get<T = Record<string, unknown>>(sql: string, ...params: unknown[]): Promise<T | undefined>;
+  run(sql: string, ...params: unknown[]): Promise<void>;
+  all<T = Record<string, unknown>>(sql: string, ...params: unknown[]): Promise<T[]>;
+  batch(statements: Array<{ sql: string; params: unknown[] }>): Promise<void>;
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+export function createDB(d1: D1Database): DBApi {
+  // Run migrations on first invocation (idempotent — uses IF NOT EXISTS)
+  let migrated = false;
+  async function ensureMigrated() {
+    if (migrated) return;
+    const stmts = SCHEMA_SQL.map((sql) => d1.prepare(sql));
+    await d1.batch(stmts);
+    migrated = true;
+  }
 
-export const db = {
-  /** Fetch a single row, returns undefined if not found */
-  get<T = Record<string, unknown>>(sql: string, ...params: unknown[]): T | undefined {
-    return sqlite.prepare(sql).get(...params) as T | undefined;
-  },
+  return {
+    async get<T = Record<string, unknown>>(sql: string, ...params: unknown[]): Promise<T | undefined> {
+      await ensureMigrated();
+      const row = await d1.prepare(sql).bind(...params).first<T | null>();
+      return row ?? undefined;
+    },
 
-  /** Execute a statement that doesn't return rows (INSERT, UPDATE, DELETE) */
-  run(sql: string, ...params: unknown[]): void {
-    sqlite.prepare(sql).run(...params);
-  },
+    async run(sql: string, ...params: unknown[]): Promise<void> {
+      await ensureMigrated();
+      await d1.prepare(sql).bind(...params).run();
+    },
 
-  /** Fetch all matching rows */
-  all<T = Record<string, unknown>>(sql: string, ...params: unknown[]): T[] {
-    return sqlite.prepare(sql).all(...params) as T[];
-  },
+    async all<T = Record<string, unknown>>(sql: string, ...params: unknown[]): Promise<T[]> {
+      await ensureMigrated();
+      const result = await d1.prepare(sql).bind(...params).all<T>();
+      return result.results ?? [];
+    },
 
-  /** Wrap multiple writes in a transaction */
-  transaction<T>(fn: () => T): T {
-    return sqlite.transaction(fn)();
-  },
-};
+    async batch(statements: Array<{ sql: string; params: unknown[] }>): Promise<void> {
+      await ensureMigrated();
+      const prepared = statements.map((s) => d1.prepare(s.sql).bind(...s.params));
+      await d1.batch(prepared);
+    },
+  };
+}
