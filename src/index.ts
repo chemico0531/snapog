@@ -3,7 +3,7 @@
 // Platform: Node.js (Hono + better-sqlite3 + satori, deployed on Fly.io)
 
 import { Hono } from 'hono';
-import { generateOGImage, buildCacheKey } from './og/render';
+import { generateOGImage } from './og/render';
 import {
   landingPage,
   registerPage,
