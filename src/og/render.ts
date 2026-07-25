@@ -13,7 +13,7 @@ const OG_HEIGHT = 630;
 
 // ── Fonts (loaded once at module init) ───────────────────────────────────────
 
-const FONTS_DIR = join(__dirname, '..', 'fonts');
+const FONTS_DIR = join(__dirname, '..', '..', 'fonts');
 
 const fonts = [
   {
