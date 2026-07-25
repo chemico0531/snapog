@@ -42,8 +42,37 @@ export interface Subscription {
   created_at: string;
 }
 
-/** Environment variables (no longer Cloudflare bindings — plain strings) */
+// ── Minimal D1 types (replaces @cloudflare/workers-types) ──────────────────
+
+/** Result returned by D1 .run() and .batch() */
+interface D1Result<T = unknown> {
+  results?: T[];
+  success: boolean;
+  meta?: Record<string, unknown>;
+}
+
+/** A prepared D1 statement */
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = unknown>(colName?: string): Promise<T | null>;
+  run<T = unknown>(): Promise<D1Result<T>>;
+  all<T = unknown>(): Promise<D1Result<T>>;
+  raw<T = unknown>(): Promise<T[]>;
+}
+
+/** D1 database binding — provided by Cloudflare Workers runtime */
+export interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
+  exec(query: string): Promise<D1Result>;
+  dump(): Promise<ArrayBuffer>;
+}
+
+// ── Environment ──────────────────────────────────────────────────────────────
+
+/** Cloudflare Workers environment bindings */
 export interface Env {
+  DB: D1Database;
   ENVIRONMENT?: string;
   AUTH_SECRET?: string;
   STRIPE_SECRET_KEY?: string;
