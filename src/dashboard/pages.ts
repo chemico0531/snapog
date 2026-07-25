@@ -560,11 +560,14 @@ export function landingPage(host: string): string {
             <li>SLA + priority queue</li>
           </ul>
           <div class="pricing-cta">
-            <a href="mailto:hello@snapog.dev" class="btn btn-ghost" style="width:100%;">Contact us →</a>
+            <a href="/register?tier=business" class="btn btn-ghost" style="width:100%;">Start Business →</a>
           </div>
         </div>
 
       </div>
+      <p style="text-align:center;margin-top:24px;font-size:13px;color:var(--text-3);font-family:var(--font-mono);">
+        All plans include R2 global caching · Instant key provisioning · Cancel anytime
+      </p>
     </div>
   </section>
 
