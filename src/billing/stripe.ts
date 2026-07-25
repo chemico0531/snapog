@@ -120,7 +120,8 @@ export async function verifyWebhookSignature(params: {
   return crypto.subtle.verify(
     'HMAC',
     key,
-    sigBytes as unknown as ArrayBuffer,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sigBytes as any,
     encoder.encode(signedPayload)
   );
 }
