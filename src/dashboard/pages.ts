@@ -344,7 +344,7 @@ function layout(title: string, body: string, extraHead = ''): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${title} — SnapOG</title>
-  <meta name="description" content="Generate stunning Open Graph images via API. Hosted on Cloudflare edge, cached globally, delivered in milliseconds." />
+  <meta name="description" content="Generate stunning Open Graph images via API. Fast, simple, delivered in milliseconds." />
   <style>${CSS}</style>
   ${extraHead}
 </head>
