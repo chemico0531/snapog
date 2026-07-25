@@ -10,6 +10,7 @@ import {
   dashboardPage,
   errorPage,
 } from './dashboard/pages';
+import { billing } from './billing/routes';
 import type { ApiKey, Env, OGParams, Tier } from './types';
 import { TIER_LIMITS } from './types';
 
