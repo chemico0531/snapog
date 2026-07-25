@@ -36,7 +36,7 @@ const fonts = [
   },
   {
     name: 'Noto Serif',
-    data: readFileSync(join(FONTS_DIR, 'NotoSerif-Bold.ttf')),
+    data: readFileSync(join(FONTS_DIR, 'NotoSerif-Bold.woff')),
     weight: 700 as const,
     style: 'normal' as const,
   },
