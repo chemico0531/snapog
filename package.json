@@ -1,24 +1,26 @@
 {
   "name": "snapog",
-  "version": "0.1.0",
-  "description": "OG image generation API — fast, cached, hosted on Cloudflare Workers",
+  "version": "0.2.0",
+  "description": "OG image generation API — fast, simple, Node.js + Hono + satori",
   "private": true,
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "db:local": "wrangler d1 migrations apply snapog-db --local",
-    "db:remote": "wrangler d1 migrations apply snapog-db",
-    "staging:deploy": "wrangler deploy --env staging"
+    "db:migrate": "tsx -e \"import './src/db'; console.log('Migrations complete.')\""
   },
   "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "better-sqlite3": "^11.7.0",
     "hono": "^4.6.0",
-    "stripe": "^22.3.2",
-    "workers-og": "^0.0.14"
+    "satori": "^0.12.1",
+    "stripe": "^22.3.2"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241127.0",
-    "typescript": "^5.7.3",
-    "wrangler": "^3.99.0"
+    "@types/better-sqlite3": "^7.6.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.3"
   }
 }
