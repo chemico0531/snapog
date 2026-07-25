@@ -789,3 +789,82 @@ export function errorPage(code: number, message: string): string {
 
   return layout(`${code} Error`, body);
 }
+
+// ── Billing: Success ─────────────────────────────────────────────────────────────────
+
+export function successPage(tier: string): string {
+  const tierLabel = tier === 'business' ? 'Business' : 'Pro';
+  const nextSteps = tier === 'business'
+    ? 'Your Business plan includes 100,000 images/month, white-label (no watermark), and priority support. Check your email for confirmation.'
+    : 'Your Pro plan includes 10,000 images/month and no watermark. Check your email for confirmation.';
+
+  const body = `
+  ${nav()}
+  <section class="section">
+    <div class="container" style="text-align:center;max-width:560px;">
+      <div style="margin-bottom:32px;">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <h1 style="font-size:32px;font-weight:700;margin-bottom:12px;letter-spacing:-0.02em;">
+        Welcome to SnapOG ${tierLabel}!
+      </h1>
+      <p style="color:var(--text-2);font-size:17px;line-height:1.7;margin-bottom:8px;">
+        ${nextSteps}
+      </p>
+      <div style="margin:36px 0;padding:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);text-align:left;">
+        <p style="font-family:var(--font-mono);font-size:13px;color:var(--text-2);margin-bottom:12px;">Next steps to start using your API key:</p>
+        <ol style="color:var(--text-2);font-size:14px;padding-left:20px;line-height:2;">
+          <li><a href="/register" style="color:var(--accent);">Register for an API key</a> — it will be automatically upgraded to <strong style="color:var(--text-1);">${tierLabel}</strong></li>
+          <li>Add the meta tags to your site</li>
+          <li>Start generating OG images</li>
+        </ol>
+        <p style="font-family:var(--font-mono);font-size:12px;color:var(--text-3);margin-top:16px;">
+          If you already have an API key, it has been upgraded to ${tierLabel}.<br/>
+          Check your <a href="/dashboard" style="color:var(--accent);">dashboard</a> to confirm.
+        </p>
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <a href="/register" class="btn btn-primary">Get API Key →</a>
+        <a href="/dashboard" class="btn btn-ghost">Dashboard</a>
+      </div>
+    </div>
+  </section>
+  ${footer()}`;
+
+  return layout('SnapOG — Payment Confirmed', body);
+}
+
+// ── Billing: Cancel ──────────────────────────────────────────────────────────────────
+
+export function cancelPage(tier: string): string {
+  const tierLabel = tier === 'business' ? 'Business' : 'Pro';
+
+  const body = `
+  ${nav()}
+  <section class="section">
+    <div class="container" style="text-align:center;max-width:520px;">
+      <div style="margin-bottom:28px;">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="15" y1="9" x2="9" y2="15"/>
+          <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+      </div>
+      <h1 style="font-size:28px;font-weight:700;margin-bottom:12px;">Payment Canceled</h1>
+      <p style="color:var(--text-2);font-size:16px;line-height:1.7;margin-bottom:32px;">
+        You canceled the ${tierLabel} upgrade — no charges were made.<br/>
+        Your account remains on the Free tier (100 images/month).
+      </p>
+      <div style="display:flex;gap:12px;justify-content:center;">
+        <a href="/register" class="btn btn-primary">Try Again</a>
+        <a href="/" class="btn btn-ghost">Back to Home</a>
+      </div>
+    </div>
+  </section>
+  ${footer()}`;
+
+  return layout('SnapOG — Payment Canceled', body);
+}
