@@ -586,19 +586,47 @@ export function landingPage(host: string): string {
 }
 
 export function registerPage(error?: string, tier?: string): string {
-  const body = `
-  ${nav()}
-  <section class="section">
-    <div class="container" style="max-width:480px;">
-      <p class="section-title">Get API Key</p>
-      <h1 class="section-h2">Start generating</h1>
-      <p class="section-sub" style="margin-bottom:32px;">Enter your email to receive your API key instantly. No password. No credit card for free tier.</p>
+  const intent = tier === 'pro' || tier === 'business' ? tier : 'free';
+  const tierLabel = intent === 'business' ? 'Business' : intent === 'pro' ? 'Pro' : 'Free';
+  const tierPrice = intent === 'business' ? '$49/mo' : intent === 'pro' ? '$19/mo' : 'Free';
+  const isPaid = intent === 'pro' || intent === 'business';
 
-      ${error ? `<div class="alert alert-error">${error}</div>` : ''}
-
+  const formSection = isPaid
+    ? `
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <span style="font-family:var(--font-mono);font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;">${tierLabel} Plan</span>
+            <span style="font-family:var(--font-mono);font-size:28px;font-weight:700;display:block;margin-top:4px;">${tierPrice}</span>
+          </div>
+          <span style="font-size:13px;color:var(--text-2);background:var(--surface);padding:4px 12px;border-radius:100px;border:1px solid var(--border);">
+            ${intent === 'business' ? '100K imgs/mo' : '10K imgs/mo'}
+          </span>
+        </div>
+        <form method="POST" action="/create-checkout-session">
+          <input type="hidden" name="tier" value="${intent}" />
+          <div class="form-group">
+            <label class="form-label" for="email">EMAIL ADDRESS</label>
+            <input class="form-input" type="email" name="email" id="email" placeholder="you@example.com" required autocomplete="email" />
+            <p class="form-hint">You'll be redirected to Stripe for secure payment. No charge until you confirm.</p>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;">
+            Pay with Stripe →
+          </button>
+        </form>
+        <p style="font-size:12px;color:var(--text-3);margin-top:14px;text-align:center;line-height:1.6;">
+          Secured by Stripe · Cancel anytime · 30-day refund policy<br/>
+          By subscribing you agree to our Terms of Service.
+        </p>
+      </div>
+      <p style="text-align:center;margin-top:16px;">
+        <a href="/register" style="color:var(--text-2);font-size:14px;">← Start with Free tier instead</a>
+      </p>
+    `
+    : `
       <div class="card">
         <form method="POST" action="/register">
-          <input type="hidden" name="tier" value="${tier ?? 'free'}" />
+          <input type="hidden" name="tier" value="free" />
           <div class="form-group">
             <label class="form-label" for="email">EMAIL ADDRESS</label>
             <input class="form-input" type="email" name="email" id="email" placeholder="you@example.com" required autocomplete="email" />
@@ -610,19 +638,38 @@ export function registerPage(error?: string, tier?: string): string {
             <p class="form-hint">Give this key a label to identify it later.</p>
           </div>
           <button type="submit" class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;">
-            Create API Key →
+            Create Free API Key →
           </button>
         </form>
       </div>
+    `;
 
+  const body = `
+  ${nav()}
+  <section class="section">
+    <div class="container" style="max-width:480px;">
+      <p class="section-title">Get API Key</p>
+      <h1 class="section-h2">${isPaid ? `Upgrade to ${tierLabel}` : 'Start generating'}</h1>
+      <p class="section-sub" style="margin-bottom:32px;">
+        ${isPaid
+          ? `Subscribe to the ${tierLabel} plan and get your API key. No watermark, higher limits.`
+          : 'Enter your email to receive your API key instantly. No password. No credit card for free tier.'}
+      </p>
+
+      ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+      ${formSection}
+
+      ${!isPaid ? `
       <p style="font-size:13px;color:var(--text-3);margin-top:20px;text-align:center;">
         Already have a key? <a href="/dashboard">View your dashboard</a>
-      </p>
+      </p>` : ''}
     </div>
   </section>
   ${footer()}`;
 
-  return layout('Get API Key', body);
+  const pageTitle = isPaid ? `Upgrade to ${tierLabel}` : 'Get API Key';
+  return layout(pageTitle, body);
 }
 
 export function keyCreatedPage(rawKey: string, email: string, tier: string): string {
