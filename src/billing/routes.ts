@@ -5,11 +5,15 @@
 
 import { Hono } from 'hono';
 import { createCheckoutSession, verifyWebhookSignature, PRICES } from './stripe';
-import { db } from '../db';
+import { createDB, type DBApi } from '../db';
 import type { Env, Tier } from '../types';
 import { successPage, cancelPage } from '../dashboard/pages';
 
-export const billing = new Hono<{ Bindings: Env }>();
+type Variables = {
+  db: DBApi;
+};
+
+export const billing = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 // ── Create Checkout Session ─────────────────────────────────────────────────
 billing.post('/create-checkout-session', async (c) => {
@@ -109,6 +113,9 @@ billing.post('/stripe-webhook', async (c) => {
 
   console.log(`Stripe webhook: ${event.type}`);
 
+  // Initialize DB lazily — only needed for webhook events that touch the DB
+  const db = createDB(c.env.DB);
+
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object;
@@ -122,15 +129,15 @@ billing.post('/stripe-webhook', async (c) => {
         break;
       }
 
-      // Find user by email, upsert
+      // Upsert user
       const userId = crypto.randomUUID();
-      db.run(
+      await db.run(
         'INSERT INTO users (id, email) VALUES (?, ?) ON CONFLICT(email) DO NOTHING',
         userId,
         customerEmail
       );
 
-      const user = db.get<{ id: string }>(
+      const user = await db.get<{ id: string }>(
         'SELECT id FROM users WHERE email = ?',
         customerEmail
       );
@@ -145,7 +152,7 @@ billing.post('/stripe-webhook', async (c) => {
       const currentPeriodEnd = new Date();
       currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
 
-      db.run(
+      await db.run(
         `INSERT INTO subscriptions
            (id, user_id, stripe_subscription_id, stripe_customer_email,
             tier, status, current_period_end)
@@ -165,7 +172,7 @@ billing.post('/stripe-webhook', async (c) => {
       );
 
       // If user already has an API key, upgrade it
-      const existingKey = db.get<{ id: string; tier: string }>(
+      const existingKey = await db.get<{ id: string; tier: string }>(
         'SELECT id, tier FROM api_keys WHERE user_id = ? ORDER BY created_at DESC LIMIT 1',
         user.id
       );
@@ -175,7 +182,7 @@ billing.post('/stripe-webhook', async (c) => {
           pro: 10_000,
           business: 100_000,
         };
-        db.run(
+        await db.run(
           'UPDATE api_keys SET tier = ?, monthly_limit = ? WHERE id = ?',
           tier ?? 'pro',
           limits[tier ?? 'pro'] ?? 10_000,
@@ -190,19 +197,19 @@ billing.post('/stripe-webhook', async (c) => {
       const subscription = event.data.object;
       const stripeSubId = subscription.id as string;
 
-      db.run(
+      await db.run(
         "UPDATE subscriptions SET status = 'canceled' WHERE stripe_subscription_id = ?",
         stripeSubId
       );
 
       // Downgrade linked API keys to free
-      const sub = db.get<{ user_id: string }>(
+      const sub = await db.get<{ user_id: string }>(
         'SELECT user_id FROM subscriptions WHERE stripe_subscription_id = ?',
         stripeSubId
       );
 
       if (sub) {
-        db.run(
+        await db.run(
           'UPDATE api_keys SET tier = ?, monthly_limit = ? WHERE user_id = ?',
           'free',
           100,
@@ -219,7 +226,7 @@ billing.post('/stripe-webhook', async (c) => {
       const status = subscription.status as string;
 
       if (status === 'past_due' || status === 'unpaid') {
-        db.run(
+        await db.run(
           'UPDATE subscriptions SET status = ? WHERE stripe_subscription_id = ?',
           status,
           stripeSubId

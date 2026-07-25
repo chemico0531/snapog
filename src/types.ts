@@ -68,6 +68,14 @@ export interface D1Database {
   dump(): Promise<ArrayBuffer>;
 }
 
+// ── Module declarations ──────────────────────────────────────────────────────
+
+/** Wrangler Data module: imports .woff files as ArrayBuffer */
+declare module '*.woff' {
+  const content: ArrayBuffer;
+  export default content;
+}
+
 // ── Environment ──────────────────────────────────────────────────────────────
 
 /** Cloudflare Workers environment bindings */

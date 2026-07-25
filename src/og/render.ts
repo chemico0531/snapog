@@ -1,42 +1,43 @@
 // SnapOG — OG image renderer
-// Uses satori + @resvg/resvg-js (Node.js native, no Cloudflare dependency)
+// Uses satori + @resvg/resvg-wasm (Cloudflare Workers compatible)
 
-import { readFileSync } from 'fs';
-import { join } from 'path';
 import satori from 'satori';
-import { Resvg } from '@resvg/resvg-js';
+import { Resvg } from '@resvg/resvg-wasm';
 import { buildElement } from './templates';
 import type { OGParams } from '../types';
+
+// ── Fonts (bundled as binary Data modules via wrangler.toml rules) ──────────
+
+import notoSansRegular from '../../fonts/NotoSans-Regular.woff';
+import notoSansBold from '../../fonts/NotoSans-Bold.woff';
+import notoSerifRegular from '../../fonts/NotoSerif-Regular.woff';
+import notoSerifBold from '../../fonts/NotoSerif-Bold.woff';
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 
-// ── Fonts (loaded once at module init) ───────────────────────────────────────
-
-const FONTS_DIR = join(__dirname, '..', '..', 'fonts');
-
 const fonts = [
   {
     name: 'Noto Sans',
-    data: readFileSync(join(FONTS_DIR, 'NotoSans-Regular.woff')),
+    data: notoSansRegular as ArrayBuffer,
     weight: 400 as const,
     style: 'normal' as const,
   },
   {
     name: 'Noto Sans',
-    data: readFileSync(join(FONTS_DIR, 'NotoSans-Bold.woff')),
+    data: notoSansBold as ArrayBuffer,
     weight: 700 as const,
     style: 'normal' as const,
   },
   {
     name: 'Noto Serif',
-    data: readFileSync(join(FONTS_DIR, 'NotoSerif-Regular.woff')),
+    data: notoSerifRegular as ArrayBuffer,
     weight: 400 as const,
     style: 'normal' as const,
   },
   {
     name: 'Noto Serif',
-    data: readFileSync(join(FONTS_DIR, 'NotoSerif-Bold.woff')),
+    data: notoSerifBold as ArrayBuffer,
     weight: 700 as const,
     style: 'normal' as const,
   },
@@ -56,9 +57,11 @@ export async function generateOGImage(
     fonts,
   });
 
-  const png = new Resvg(svg).render().asPng();
+  const resvg = new Resvg(svg);
+  const pngData = resvg.render();
+  const pngBuffer = pngData.asPng();
 
-  return new Response(png, {
+  return new Response(pngBuffer, {
     headers: { 'Content-Type': 'image/png' },
   });
 }

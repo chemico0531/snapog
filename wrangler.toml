@@ -1,0 +1,16 @@
+name = "snapog"
+main = "src/index.ts"
+compatibility_date = "2025-07-25"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "snapog-db"
+database_id = "snapog-db"
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+# Treat .woff font files as binary Data modules so they can be imported as ArrayBuffer
+rules = [
+  { type = "Data", globs = ["**/*.woff"] }
+]

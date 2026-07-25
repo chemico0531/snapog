@@ -1,6 +1,6 @@
 // SnapOG — Main application
 // Routes: GET /og (image gen), GET / (landing), GET/POST /register, GET /dashboard
-// Platform: Node.js (Hono + better-sqlite3 + satori, deployed on Fly.io)
+// Platform: Cloudflare Workers (Hono + D1 + satori + resvg-wasm)
 
 import { Hono } from 'hono';
 import { generateOGImage } from './og/render';
@@ -12,11 +12,23 @@ import {
   errorPage,
 } from './dashboard/pages';
 import { billing } from './billing/routes';
-import { db } from './db';
+import { createDB, type DBApi } from './db';
 import type { ApiKey, Env, OGParams, Tier } from './types';
 import { TIER_LIMITS } from './types';
 
-const app = new Hono<{ Bindings: Env }>();
+type Variables = {
+  db: DBApi;
+};
+
+const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+
+// ─── Middleware ───────────────────────────────────────────────────────────────
+
+// Inject D1 database wrapper into every request context
+app.use('*', async (c, next) => {
+  c.set('db', createDB(c.env.DB));
+  await next();
+});
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -49,10 +61,13 @@ function htmlResponse(html: string, status = 200): Response {
 }
 
 // Validate an API key from request and return the DB row, or null
-async function resolveApiKey(rawKey: string | null): Promise<ApiKey | null> {
+async function resolveApiKey(
+  db: DBApi,
+  rawKey: string | null
+): Promise<ApiKey | null> {
   if (!rawKey) return null;
   const hash = await sha256(rawKey);
-  const row = db.get<ApiKey>(
+  const row = await db.get<ApiKey>(
     'SELECT * FROM api_keys WHERE key_hash = ?',
     hash
   );
@@ -60,14 +75,17 @@ async function resolveApiKey(rawKey: string | null): Promise<ApiKey | null> {
 }
 
 // Reset monthly usage if billing month rolled over
-async function maybeResetUsage(key: ApiKey): Promise<ApiKey> {
+async function maybeResetUsage(
+  db: DBApi,
+  key: ApiKey
+): Promise<ApiKey> {
   const resetAt = new Date(key.usage_reset_at);
   const now = new Date();
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   if (resetAt < thisMonth) {
     const newResetAt = thisMonth.toISOString();
-    db.run(
+    await db.run(
       'UPDATE api_keys SET usage_count = 0, usage_reset_at = ? WHERE id = ?',
       newResetAt,
       key.id
@@ -77,26 +95,24 @@ async function maybeResetUsage(key: ApiKey): Promise<ApiKey> {
   return key;
 }
 
-// Increment usage counter and record event
+// Increment usage counter and record event (batched for atomicity)
 async function recordUsage(
+  db: DBApi,
   key: ApiKey,
   template: string,
   cacheHit: boolean
 ): Promise<void> {
   const eventId = crypto.randomUUID();
-  db.transaction(() => {
-    db.run(
-      'UPDATE api_keys SET usage_count = usage_count + 1 WHERE id = ?',
-      key.id
-    );
-    db.run(
-      'INSERT INTO usage_events (id, api_key_id, template, cache_hit) VALUES (?, ?, ?, ?)',
-      eventId,
-      key.id,
-      template,
-      cacheHit ? 1 : 0
-    );
-  });
+  await db.batch([
+    {
+      sql: 'UPDATE api_keys SET usage_count = usage_count + 1 WHERE id = ?',
+      params: [key.id],
+    },
+    {
+      sql: 'INSERT INTO usage_events (id, api_key_id, template, cache_hit) VALUES (?, ?, ?, ?)',
+      params: [eventId, key.id, template, cacheHit ? 1 : 0],
+    },
+  ]);
 }
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -109,6 +125,7 @@ app.get('/', (c) => {
 
 // ── OG image generation ────────────────────────────────────────────────────────
 app.get('/og', async (c) => {
+  const db = c.get('db');
   const q = c.req.query();
   const rawKey = q['key'] ?? null;
 
@@ -125,13 +142,13 @@ app.get('/og', async (c) => {
       401
     );
   }
-  let apiKey = await resolveApiKey(rawKey);
+  let apiKey = await resolveApiKey(db, rawKey);
   if (!apiKey) {
     return c.json({ error: 'Invalid API key' }, 401);
   }
 
   // Reset usage if month rolled
-  apiKey = await maybeResetUsage(apiKey);
+  apiKey = await maybeResetUsage(db, apiKey);
 
   // Check rate limit
   if (apiKey.usage_count >= apiKey.monthly_limit) {
@@ -163,12 +180,14 @@ app.get('/og', async (c) => {
 
   const watermark = apiKey.tier === 'free';
 
-  // Generate image (no R2 cache — satori + resvg-js renders fast enough on Node.js)
+  // Generate image
   const imageResponse = await generateOGImage(params, watermark);
   const imageBuffer = await imageResponse.arrayBuffer();
 
-  // Record usage (non-blocking on Node.js — just fires and continues)
-  recordUsage(apiKey, params.template ?? 'default', false);
+  // Record usage (fire-and-forget — don't block the response)
+  c.executionCtx.waitUntil(
+    recordUsage(db, apiKey, params.template ?? 'default', false)
+  );
 
   return new Response(imageBuffer, {
     headers: {
@@ -186,6 +205,7 @@ app.get('/register', (c) => {
 });
 
 app.post('/register', async (c) => {
+  const db = c.get('db');
   let email: string, keyname: string, tier: string;
   try {
     const form = await c.req.formData();
@@ -210,13 +230,13 @@ app.post('/register', async (c) => {
 
   // Upsert user
   const userId = crypto.randomUUID();
-  db.run(
+  await db.run(
     'INSERT INTO users (id, email) VALUES (?, ?) ON CONFLICT(email) DO NOTHING',
     userId,
     email
   );
 
-  const user = db.get<{ id: string }>(
+  const user = await db.get<{ id: string }>(
     'SELECT id FROM users WHERE email = ?',
     email
   );
@@ -239,7 +259,7 @@ app.post('/register', async (c) => {
   ).toISOString();
   const monthlyLimit = TIER_LIMITS[safeTier];
 
-  db.run(
+  await db.run(
     `INSERT INTO api_keys
        (id, user_id, name, key_prefix, key_hash, tier, monthly_limit, usage_reset_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -258,6 +278,7 @@ app.post('/register', async (c) => {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 app.get('/dashboard', async (c) => {
+  const db = c.get('db');
   const rawKey = c.req.query('key');
   if (!rawKey) {
     return htmlResponse(
@@ -266,16 +287,16 @@ app.get('/dashboard', async (c) => {
     );
   }
 
-  const apiKey = await resolveApiKey(rawKey);
+  const apiKey = await resolveApiKey(db, rawKey);
   if (!apiKey) {
     return htmlResponse(errorPage(404, 'API key not found'), 404);
   }
 
-  const refreshed = await maybeResetUsage(apiKey);
+  const refreshed = await maybeResetUsage(db, apiKey);
 
   // Count recent events (last 24h)
   const yesterday = new Date(Date.now() - 86_400_000).toISOString();
-  const recent = db.get<{ cnt: number }>(
+  const recent = await db.get<{ cnt: number }>(
     'SELECT COUNT(*) as cnt FROM usage_events WHERE api_key_id = ? AND generated_at > ?',
     refreshed.id,
     yesterday
