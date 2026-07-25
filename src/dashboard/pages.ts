@@ -370,7 +370,7 @@ function footer(): string {
   return `
   <footer class="footer">
     <div class="container">
-      snapog.dev — OG images at the edge. Built with ♥ on Cloudflare Workers.
+      snapog.dev — beautiful OG images, one API call away.
     </div>
   </footer>`;
 }
