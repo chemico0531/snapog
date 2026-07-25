@@ -31,9 +31,24 @@ export interface OGParams {
   tag?: string;
 }
 
+export interface Subscription {
+  id: string;
+  user_id: string;
+  stripe_subscription_id: string;
+  stripe_customer_email: string;
+  tier: Tier;
+  status: 'active' | 'past_due' | 'unpaid' | 'canceled';
+  current_period_end: string;
+  created_at: string;
+}
+
 export interface Env {
   DB: D1Database;
   OG_CACHE: R2Bucket;
   ENVIRONMENT: string;
   AUTH_SECRET?: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_PRO_PRICE_ID?: string;
+  STRIPE_BUSINESS_PRICE_ID?: string;
 }
