@@ -18,7 +18,7 @@ const FONTS_DIR = join(__dirname, '..', 'fonts');
 const fonts = [
   {
     name: 'Noto Sans',
-    data: readFileSync(join(FONTS_DIR, 'NotoSans-Regular.ttf')),
+    data: readFileSync(join(FONTS_DIR, 'NotoSans-Regular.woff')),
     weight: 400 as const,
     style: 'normal' as const,
   },
