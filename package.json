@@ -12,8 +12,7 @@
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2",
     "hono": "^4.6.0",
-    "satori": "^0.12.1",
-    "stripe": "^22.3.2"
+    "satori": "^0.12.1"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
